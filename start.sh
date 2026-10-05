@@ -17,9 +17,17 @@ if 'app' not in config:
     config['app'] = {}
 
 # Configure Pixabay if PIXABAY_API_KEY is set
+# IMPORTANT: keys must live under config['app'], because material.py does:
+#   api_key = config.app.get("pixabay_api_keys")
 if os.environ.get('PIXABAY_API_KEY'):
     config['app']['video_source'] = 'pixabay'
-    config['pixabay_api_keys'] = [os.environ['PIXABAY_API_KEY']]
+    config['app']['pixabay_api_keys'] = [os.environ['PIXABAY_API_KEY']]
+    # remove mistaken top-level key from older start.sh versions
+    config.pop('pixabay_api_keys', None)
+
+# Optional: FORCE_VIDEO_SOURCE=pixabay|pexels|...
+if os.environ.get('FORCE_VIDEO_SOURCE'):
+    config['app']['video_source'] = os.environ['FORCE_VIDEO_SOURCE'].strip()
 
 # Configure Groq/OpenAI-compatible if GROQ_API_KEY and GROQ_MODEL are set
 if os.environ.get('GROQ_API_KEY') and os.environ.get('GROQ_MODEL'):
@@ -40,4 +48,3 @@ sleep 2
 
 # Start streamlit in foreground (listens on 8501)
 exec streamlit run ./webui/Main.py --server.address=0.0.0.0 --server.port=8501 --browser.serverAddress=127.0.0.1 --server.enableCORS=True --browser.gatherUsageStats=False --client.toolbarMode=minimal --logger.hideWelcomeMessage=True --server.showEmailPrompt=False
-
