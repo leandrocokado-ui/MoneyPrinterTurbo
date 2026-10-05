@@ -1,1 +1,1 @@
-PLACEHOLDER
+USE_FILE:/home/workdir/artifacts/video_py_content.txt
