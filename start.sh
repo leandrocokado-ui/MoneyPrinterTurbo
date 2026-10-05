@@ -1,33 +1,43 @@
 #!/bin/bash
 set -e
 
-# Configure config.toml with Groq settings if environment variables are set
-if [ -n "${GROQ_API_KEY:-}" ] && [ -n "${GROQ_MODEL:-}" ]; then
-  if [ -f "config.toml" ]; then
-    python3 -c "
+# Copy config.example.toml to config.toml if it doesn't exist
+if [ ! -f "config.toml" ]; then
+  cp config.example.toml config.toml
+fi
+
+# Configure config.toml with environment-based settings
+python3 << 'PYTHON_EOF'
 import toml
 import os
 
-# Load config
 config = toml.load('config.toml')
 
-# Ensure [app] section exists
 if 'app' not in config:
     config['app'] = {}
 
-# Set Groq/OpenAI-compatible settings
-config['app']['llm_provider'] = 'openai'
-config['app']['openai_api_key'] = os.environ['GROQ_API_KEY']
-config['app']['openai_base_url'] = 'https://api.groq.com/openai/v1'
-config['app']['openai_model_name'] = os.environ['GROQ_MODEL']
+# Configure Pixabay if PIXABAY_API_KEY is set
+if os.environ.get('PIXABAY_API_KEY'):
+    config['app']['video_source'] = 'pixabay'
+    config['pixabay_api_keys'] = [os.environ['PIXABAY_API_KEY']]
 
-# Write back
+# Configure Groq/OpenAI-compatible if GROQ_API_KEY and GROQ_MODEL are set
+if os.environ.get('GROQ_API_KEY') and os.environ.get('GROQ_MODEL'):
+    config['app']['llm_provider'] = 'openai'
+    config['app']['openai_api_key'] = os.environ['GROQ_API_KEY']
+    config['app']['openai_base_url'] = 'https://api.groq.com/openai/v1'
+    config['app']['openai_model_name'] = os.environ['GROQ_MODEL']
+
 with open('config.toml', 'w') as f:
     toml.dump(config, f)
-"
-  fi
-fi
+PYTHON_EOF
 
-# Execute the original entrypoint
+# Start API in background (listens on 8080)
+python main.py &
+
+# Wait a moment for API to start
+sleep 2
+
+# Start streamlit in foreground (listens on 8501)
 exec streamlit run ./webui/Main.py --server.address=0.0.0.0 --server.port=8501 --browser.serverAddress=127.0.0.1 --server.enableCORS=True --browser.gatherUsageStats=False --client.toolbarMode=minimal --logger.hideWelcomeMessage=True --server.showEmailPrompt=False
 
