@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim-bullseye
+FROM python:3.11-slim-bookworm
 
 # Set the working directory in the container
 WORKDIR /MoneyPrinterTurbo
@@ -16,14 +16,14 @@ ARG PIP_USE_OFFICIAL=0
 
 # 系统依赖安装需要同时满足两点：国内环境保留镜像回退能力，所有镜像均
 # 失败时必须让 Docker 构建立刻失败。旧循环最后执行的 sleep 总会返回 0，
-# 导致 git/ffmpeg 未安装时仍生成不可用镜像。这里把“写入软件源”“安装”
-# 和“三次重试”拆成边界清晰的 shell 函数，并用函数返回值决定是否继续。
+# 导致 git/ffmpeg 未安装时仍生成不可用镜像。这里把"写入软件源""安装"
+# 和"三次重试"拆成边界清晰的 shell 函数，并用函数返回值决定是否继续。
 # 所有软件源统一使用 HTTPS，避免部分网络环境直接拦截明文 HTTP 请求。
 RUN set -u; \
     write_debian_sources() { \
         main_url="$1"; \
         security_url="$2"; \
-        printf 'deb %s bullseye main\ndeb %s bullseye-updates main\ndeb %s bullseye-security main\n' \
+        printf 'deb %s bookworm main\ndeb %s bookworm-updates main\ndeb %s bookworm-security main\n' \
             "$main_url" "$main_url" "$security_url" > /etc/apt/sources.list; \
         rm -rf /var/lib/apt/lists/*; \
     }; \
@@ -109,3 +109,4 @@ CMD ["streamlit", "run", "./webui/Main.py", "--server.address=0.0.0.0", "--serve
 # docker run -v $(pwd)/config.toml:/MoneyPrinterTurbo/config.toml -v $(pwd)/storage:/MoneyPrinterTurbo/storage -p 127.0.0.1:8501:8501 moneyprinterturbo
 ## For Windows:
 # docker run -v ${PWD}/config.toml:/MoneyPrinterTurbo/config.toml -v ${PWD}/storage:/MoneyPrinterTurbo/storage -p 127.0.0.1:8501:8501 moneyprinterturbo
+
