@@ -1,0 +1,45 @@
+name: restore-video-py
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-video-py.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore and patch video.py
+        run: |
+          set -e
+          curl -sL "https://raw.githubusercontent.com/harry0703/MoneyPrinterTurbo/main/app/controllers/v1/video.py" -o app/controllers/v1/video.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/controllers/v1/video.py")
+          text = p.read_text(encoding="utf-8")
+          needle = "    task_id = utils.get_uuid()\n    request_id = base.get_task_id(request)"
+          insert = (
+              "    task_id = utils.get_uuid()\n"
+              "    forced_source = os.environ.get(\"FORCE_VIDEO_SOURCE\")\n"
+              "    if forced_source and hasattr(body, \"video_source\"):\n"
+              "        body.video_source = forced_source\n"
+              "    request_id = base.get_task_id(request)"
+          )
+          if needle not in text:
+              raise SystemExit("needle not found in video.py")
+          p.write_text(text.replace(needle, insert, 1), encoding="utf-8")
+          print("patched ok")
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/controllers/v1/video.py
+          if git diff --staged --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "fix: restore video.py with FORCE_VIDEO_SOURCE"
+          git push
